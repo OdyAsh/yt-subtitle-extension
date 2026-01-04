@@ -8,18 +8,37 @@ let checkInterval = null;
 let initAttempts = 0;
 const MAX_INIT_ATTEMPTS = 10;
 let currentUrl = window.location.href;
+let currentStyles = {
+  fontSize: 18,
+  fontColor: "#ffffff",
+  bgColor: "#080808",
+  bgOpacity: 75
+};
 
 // Loads stored subtitles for the current video from local storage
 function loadStoredSubtitles() {
   const cleanedUrl = cleanYouTubeUrl(window.location.href);
 
-  chrome.storage.local.get([cleanedUrl], (result) => {
+  chrome.storage.local.get([cleanedUrl, "subtitleStyles"], (result) => {
     if (result[cleanedUrl]) {
       console.log("Content Script: Found stored subtitles for this video.");
       currentSubtitles = result[cleanedUrl]; // Load stored subtitles
+      
+      // Load and apply styles if available
+      if (result.subtitleStyles) {
+        currentStyles = result.subtitleStyles;
+        applySubtitleStyles();
+      }
+      
       startSubtitleDisplay(); // Start displaying the subtitles
     } else {
       console.log("Content Script: No stored subtitles found for this video.");
+    }
+    
+    // Still load styles even if no subtitles yet
+    if (result.subtitleStyles) {
+      currentStyles = result.subtitleStyles;
+      applySubtitleStyles();
     }
   });
 }
@@ -118,6 +137,7 @@ function initialize() {
           action: "fetchSubtitles",
           videoUrl: videoUrl,
           apiKey: message.apiKey,
+          model: message.model,
         },
         (response) => {
           if (chrome.runtime.lastError) {
@@ -161,6 +181,12 @@ function initialize() {
         sendResponse({ status: "no_subtitles_found" });
       }
       return true; // Indicate response sent
+    } else if (message.action === "updateSubtitleStyles") {
+      console.log("Content Script: Received updateSubtitleStyles request");
+      currentStyles = message.styles;
+      applySubtitleStyles();
+      sendResponse({ status: "success" });
+      return true;
     }
   });
 
@@ -184,6 +210,9 @@ function createSubtitleElements() {
   subtitleText.id = "youtube-gemini-subtitles-text";
   subtitleContainer.appendChild(subtitleText);
 
+  // Apply initial styles
+  applySubtitleStyles();
+
   if (videoContainer) {
     if (getComputedStyle(videoContainer).position === "static") {
       videoContainer.style.position = "relative";
@@ -193,6 +222,26 @@ function createSubtitleElements() {
   } else {
     console.error("Cannot add subtitle container, video container not found.");
   }
+}
+
+// Applies subtitle styles dynamically
+function applySubtitleStyles() {
+  if (!subtitleText) return;
+  
+  subtitleText.style.fontSize = `${currentStyles.fontSize}px`;
+  subtitleText.style.color = currentStyles.fontColor;
+  
+  // Convert hex color to rgba with opacity
+  const bgColor = hexToRgba(currentStyles.bgColor, currentStyles.bgOpacity / 100);
+  subtitleText.style.backgroundColor = bgColor;
+}
+
+// Helper function to convert hex color to rgba
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 // Starts displaying subtitles
@@ -209,7 +258,7 @@ function startSubtitleDisplay() {
 
   videoPlayer.addEventListener("play", updateSubtitles);
   videoPlayer.addEventListener("seeked", updateSubtitles);
-  videoPlayer.addEventListener("pause", hideCurrentSubtitle);
+  videoPlayer.addEventListener("pause", updateSubtitles); // Show subtitles when paused
 }
 
 // Stops displaying subtitles
@@ -222,7 +271,7 @@ function stopSubtitleDisplay() {
   if (videoPlayer) {
     videoPlayer.removeEventListener("play", updateSubtitles);
     videoPlayer.removeEventListener("seeked", updateSubtitles);
-    videoPlayer.removeEventListener("pause", hideCurrentSubtitle);
+    videoPlayer.removeEventListener("pause", updateSubtitles);
   }
 }
 
@@ -249,8 +298,7 @@ function updateSubtitles() {
   if (
     !videoPlayer ||
     !subtitleText ||
-    !subtitleContainer ||
-    videoPlayer.paused
+    !subtitleContainer
   ) {
     return;
   }

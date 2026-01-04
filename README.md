@@ -6,16 +6,25 @@ Chrome extension that allows users to generate subtitles for YouTube videos usin
 
 ## Gemini Model
 
-This extension uses the **Gemini 2.5 Pro Experimental Model** (`gemini-2.5-pro-exp-03-25`) to generate subtitles.
+This extension supports multiple **Gemini models with video understanding capability**:
+- `gemini-2.5-pro-exp-03-25` (default, Experimental)
+- `gemini-2.0-flash-exp`
+- `gemini-1.5-pro`
+- `gemini-1.5-flash`
+- `gemini-1.5-flash-8b`
+
+You can select your preferred model from the dropdown in the extension popup.
 
 ## Features
 
 - [x] **Use Your Own Gemini API Key**: Integrate your Gemini AI API key to generate subtitles.
 - [x] **Generate Subtitles for YouTube Videos**: Automatically fetch subtitles in SRT format for any YouTube video.
 - [x] **Local Storage of Subtitles**: Subtitles are stored locally for each video, enabling quick access when revisiting the same video.
+- [x] **Multiple Gemini Models**: Choose from various Gemini models with video understanding capability.
+- [x] **Display Customizations**: Customize subtitle appearance (font size, font color, background color, transparency).
+- [x] **Persistent Subtitle Display**: Subtitles remain visible when video is paused.
 - [ ] Delete stored subtitles
 - [ ] Enable multiple languages
-- [ ] Different display customizations (fontSize, color, etc.)
 
 ## Installation
 
@@ -30,8 +39,14 @@ This extension uses the **Gemini 2.5 Pro Experimental Model** (`gemini-2.5-pro-e
 1. Open a YouTube video.
 2. Click on the extension icon in the Chrome toolbar.
 3. Enter your Gemini API key in the input field.
-4. Click **Generate Subtitles** to fetch subtitles for the video.
-5. If subtitles have already been generated for the video, they will load automatically.
+4. (Optional) Select your preferred Gemini model from the dropdown.
+5. (Optional) Customize subtitle appearance using the styling controls.
+6. Click **Generate Subtitles** to fetch subtitles for the video.
+7. If subtitles have already been generated for the video, they will load automatically.
+
+## Documentation
+
+For a comprehensive technical overview of the extension architecture and implementation details, see [docs/overview.md](docs/overview.md).
 
 ## File Overview
 
