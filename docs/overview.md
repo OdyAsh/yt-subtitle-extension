@@ -30,8 +30,9 @@ The popup provides the user interface for interacting with the extension. It inc
 #### Features:
 - **API Key Management**: Secure input for Gemini API key (stored locally)
 - **Model Selection**: Dropdown to select from Gemini models with video understanding capability
-- **Model Refresh**: Button to refresh the list of available models
-- **Subtitle Styling Controls**: 
+- **Model Refresh**: Button to dynamically fetch and refresh the list of available models from Google Cloud documentation
+- **Subtitle Settings Controls**: 
+  - Enable/disable toggle (default ON when generated)
   - Font size adjustment (10-50px)
   - Font color picker
   - Background color picker
@@ -39,12 +40,13 @@ The popup provides the user interface for interacting with the extension. It inc
 - **Status Display**: Real-time feedback on subtitle generation progress
 
 #### Supported Models:
-The extension supports the following Gemini models with video understanding capability:
-- `gemini-2.5-pro-exp-03-25` (default)
+The extension dynamically fetches models from [Google Cloud's Video Understanding documentation](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/video-understanding). Current models include:
 - `gemini-2.0-flash-exp`
 - `gemini-1.5-pro`
 - `gemini-1.5-flash`
 - `gemini-1.5-flash-8b`
+
+The model list is fetched on popup load and can be refreshed using the refresh button (↻). If fetching fails, a fallback list is used.
 
 ### 2. Content Script (`content.js`)
 
@@ -55,6 +57,7 @@ The content script runs on YouTube pages and manages subtitle display.
 - **Subtitle Rendering**: Creates and positions subtitle overlay elements
 - **Timing Synchronization**: Updates subtitles based on video playback time
 - **Style Application**: Applies user-defined styling to subtitles
+- **Subtitle Visibility Control**: Manages subtitle enable/disable state
 - **Event Handling**: 
   - Play/pause events (subtitles now display when paused)
   - Seek events (updates subtitle position)
@@ -64,7 +67,8 @@ The content script runs on YouTube pages and manages subtitle display.
 ```javascript
 // Subtitles are updated every 100ms
 // They display when video time falls within subtitle time range
-if (currentTime >= subtitle.startTime && currentTime <= subtitle.endTime) {
+// AND when subtitles are enabled
+if (subtitlesEnabled && currentTime >= subtitle.startTime && currentTime <= subtitle.endTime) {
   displaySubtitle(subtitle.text);
 }
 ```
@@ -72,7 +76,9 @@ if (currentTime >= subtitle.startTime && currentTime <= subtitle.endTime) {
 #### Key Features:
 - **Persistent Display**: Subtitles remain visible when video is paused
 - **Dynamic Styling**: Real-time style updates without page reload
+- **Toggle Control**: Can be enabled/disabled via popup settings
 - **Local Caching**: Subtitles are cached per video URL
+- **Auto-Enable**: Subtitles automatically enable when generated
 
 ### 3. Background Service Worker (`background.js`)
 
@@ -126,15 +132,25 @@ Provides base styling for subtitle elements that can be overridden by user prefe
 4. **Subtitle Display**:
    - Background sends parsed subtitles to content script
    - Content script creates overlay elements
+   - Subtitles are automatically enabled (toggle ON)
    - Starts synchronization with video playback
 
 ### Style Update Flow:
 
-1. User adjusts styling controls in popup
-2. Clicks "Apply Styles" button
-3. Popup saves styles to local storage
+1. User adjusts settings controls in popup (styles and enable/disable)
+2. Clicks "Apply Settings" button
+3. Popup saves settings to local storage
 4. Popup sends message to content script
-5. Content script applies styles to subtitle elements
+5. Content script applies styles and visibility state to subtitle elements
+
+### Model Refresh Flow:
+
+1. User clicks refresh button (↻) in popup
+2. Popup fetches Google Cloud documentation page
+3. HTML is parsed to extract model names from table
+4. Dropdown is repopulated with latest models
+5. Previously selected model is restored if still available
+6. Falls back to default list if fetching fails
 
 ## Storage Structure
 
@@ -144,6 +160,7 @@ The extension uses Chrome's local storage API:
 {
   "geminiApiKey": "user's API key",
   "selectedModel": "model identifier",
+  "subtitlesEnabled": true,  // default when generated
   "subtitleStyles": {
     "fontSize": 18,
     "fontColor": "#ffffff",
