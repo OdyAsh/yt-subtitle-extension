@@ -12,6 +12,14 @@ document.addEventListener("DOMContentLoaded", function () {
   const subtitlesEnabledToggle = document.getElementById("subtitlesEnabled");
   const applyStyleBtn = document.getElementById("applyStyleBtn");
 
+  // Constants for model fetching
+  const GOOGLE_DOCS_URL = "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/video-understanding";
+  const TABLE_SELECTORS = [
+    ".devsite-table-wrapper",
+    "table.responsive",
+    ".devsite-article table"
+  ];
+
   // List of Gemini models with video understanding capability (fallback)
   let videoModels = [
     "gemini-2.0-flash-exp",
@@ -26,15 +34,20 @@ document.addEventListener("DOMContentLoaded", function () {
       statusDiv.textContent = "Fetching latest models...";
       
       // Fetch the documentation page
-      const response = await fetch("https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/video-understanding");
+      const response = await fetch(GOOGLE_DOCS_URL);
       const html = await response.text();
       
       // Parse HTML and extract model names from the table
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, "text/html");
       
-      // Find the table with class devsite-table-wrapper
-      const tableWrapper = doc.querySelector(".devsite-table-wrapper");
+      // Try multiple selectors for robustness
+      let tableWrapper = null;
+      for (const selector of TABLE_SELECTORS) {
+        tableWrapper = doc.querySelector(selector);
+        if (tableWrapper) break;
+      }
+      
       if (tableWrapper) {
         const models = [];
         const rows = tableWrapper.querySelectorAll("table tbody tr");

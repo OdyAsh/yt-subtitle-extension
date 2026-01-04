@@ -16,6 +16,12 @@ let currentStyles = {
   bgOpacity: 75
 };
 
+// Helper function to enable subtitles
+function enableSubtitles() {
+  subtitlesEnabled = true;
+  chrome.storage.local.set({ subtitlesEnabled: true });
+}
+
 // Loads stored subtitles for the current video from local storage
 function loadStoredSubtitles() {
   const cleanedUrl = cleanYouTubeUrl(window.location.href);
@@ -176,8 +182,7 @@ function initialize() {
 
       if (currentSubtitles.length > 0) {
         // Enable subtitles by default when generating
-        subtitlesEnabled = true;
-        chrome.storage.local.set({ subtitlesEnabled: true });
+        enableSubtitles();
         
         startSubtitleDisplay(); // Start displaying subtitles
 
