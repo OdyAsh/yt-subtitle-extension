@@ -35,9 +35,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (result.geminiApiKey) {
       apiKeyInput.value = result.geminiApiKey;
     }
-    if (result.selectedModel) {
-      modelSelect.value = result.selectedModel;
-    }
+    // Populate models first, then restore selected model
+    populateModelDropdown(result.selectedModel);
+    
     if (result.subtitleStyles) {
       const styles = result.subtitleStyles;
       if (styles.fontSize) fontSizeInput.value = styles.fontSize;
@@ -48,7 +48,7 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   // Populate model dropdown
-  function populateModelDropdown() {
+  function populateModelDropdown(selectedModel) {
     modelSelect.innerHTML = "";
     videoModels.forEach(model => {
       const option = document.createElement("option");
@@ -56,21 +56,21 @@ document.addEventListener("DOMContentLoaded", function () {
       option.textContent = model;
       modelSelect.appendChild(option);
     });
-    // Restore selected model
-    chrome.storage.local.get(["selectedModel"], function (result) {
-      if (result.selectedModel && videoModels.includes(result.selectedModel)) {
-        modelSelect.value = result.selectedModel;
-      }
-    });
+    // Restore selected model if provided
+    if (selectedModel && videoModels.includes(selectedModel)) {
+      modelSelect.value = selectedModel;
+    }
   }
 
   // Initialize model dropdown
-  populateModelDropdown();
+  // Note: populateModelDropdown is called in the storage.local.get callback above
 
   // Handle refresh models button
   refreshModelsBtn.addEventListener("click", function () {
     statusDiv.textContent = "Model list refreshed!";
-    populateModelDropdown();
+    chrome.storage.local.get(["selectedModel"], function (result) {
+      populateModelDropdown(result.selectedModel);
+    });
     setTimeout(() => {
       if (statusDiv.textContent === "Model list refreshed!") {
         statusDiv.textContent = "";
