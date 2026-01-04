@@ -6,16 +6,26 @@ Chrome extension that allows users to generate subtitles for YouTube videos usin
 
 ## Gemini Model
 
-This extension uses the **Gemini 2.5 Pro Experimental Model** (`gemini-2.5-pro-exp-03-25`) to generate subtitles.
+This extension **dynamically fetches** the latest Gemini models with video understanding capability from [Google Cloud's documentation](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/video-understanding). Current models include:
+- `gemini-2.0-flash-exp`
+- `gemini-1.5-pro`
+- `gemini-1.5-flash`
+- `gemini-1.5-flash-8b`
+
+You can select your preferred model from the dropdown in the extension popup and refresh the list to get the latest available models.
 
 ## Features
 
 - [x] **Use Your Own Gemini API Key**: Integrate your Gemini AI API key to generate subtitles.
 - [x] **Generate Subtitles for YouTube Videos**: Automatically fetch subtitles in SRT format for any YouTube video.
 - [x] **Local Storage of Subtitles**: Subtitles are stored locally for each video, enabling quick access when revisiting the same video.
+- [x] **Dynamic Model Selection**: Automatically fetches the latest Gemini models with video understanding capability.
+- [x] **Subtitle Settings**: 
+  - Enable/disable subtitles with a toggle switch
+  - Customize subtitle appearance (font size, font color, background color, transparency)
+- [x] **Persistent Subtitle Display**: Subtitles remain visible when video is paused.
 - [ ] Delete stored subtitles
 - [ ] Enable multiple languages
-- [ ] Different display customizations (fontSize, color, etc.)
 
 ## Installation
 
@@ -30,8 +40,15 @@ This extension uses the **Gemini 2.5 Pro Experimental Model** (`gemini-2.5-pro-e
 1. Open a YouTube video.
 2. Click on the extension icon in the Chrome toolbar.
 3. Enter your Gemini API key in the input field.
-4. Click **Generate Subtitles** to fetch subtitles for the video.
-5. If subtitles have already been generated for the video, they will load automatically.
+4. (Optional) Select your preferred Gemini model from the dropdown or click the refresh button (↻) to get the latest models.
+5. (Optional) Customize subtitle appearance and enable/disable subtitles using the Subtitle Settings section.
+6. Click **Generate Caption Closed** to fetch subtitles for the video.
+7. If subtitles have already been generated for the video, they will load automatically.
+8. Use the toggle in Subtitle Settings to show/hide subtitles at any time.
+
+## Documentation
+
+For a comprehensive technical overview of the extension architecture and implementation details, see [docs/overview.md](docs/overview.md).
 
 ## File Overview
 

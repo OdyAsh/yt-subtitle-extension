@@ -73,7 +73,7 @@ function parseSrt(srtText) {
 // Listener for messages from content or popup scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "fetchSubtitles") {
-    const { videoUrl, apiKey } = message;
+    const { videoUrl, apiKey, model } = message;
     const tabId = sender.tab?.id;
 
     console.log(
@@ -106,7 +106,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           });
         }
 
-        fetchSubtitlesFromGemini(cleanedUrl, apiKey, tabId)
+        fetchSubtitlesFromGemini(cleanedUrl, apiKey, model, tabId)
           .then((subtitles) => {
             if (tabId) {
               chrome.tabs.sendMessage(tabId, {
@@ -164,13 +164,16 @@ function cleanYouTubeUrl(originalUrl) {
 }
 
 // Fetches subtitles from the Gemini API
-async function fetchSubtitlesFromGemini(videoUrl, apiKey, tabId) {
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-exp-03-25:generateContent?key=${apiKey}`;
+async function fetchSubtitlesFromGemini(videoUrl, apiKey, model, tabId) {
+  // Use provided model or default to the experimental one
+  const selectedModel = model || "gemini-2.5-pro-exp-03-25";
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
 
   console.log(
     "Background Script: URL being embedded in Gemini prompt:",
     videoUrl
   );
+  console.log("Background Script: Using model:", selectedModel);
 
   const prompt = `Generate ONLY the SRT subtitles for the YouTube video.\nDo NOT include any introductory text, explanations, or summaries.\nThe output MUST strictly follow the Standard SRT format:\n1\n00:00:01,000 --> 00:00:05,000\nSubtitle text line 1\nSubtitle text line 2 (if needed).\nEnsure timestamps use milliseconds (,) and sequential numbering is correct. Ensure time stamps are in the following format: HH:MM,ms, example: 00:00:01,000. DO NOT recite training data in the prompt.`;
 
