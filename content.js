@@ -8,6 +8,7 @@ let checkInterval = null;
 let initAttempts = 0;
 const MAX_INIT_ATTEMPTS = 10;
 let currentUrl = window.location.href;
+let subtitlesEnabled = true; // Default to enabled
 let currentStyles = {
   fontSize: 18,
   fontColor: "#ffffff",
@@ -19,7 +20,7 @@ let currentStyles = {
 function loadStoredSubtitles() {
   const cleanedUrl = cleanYouTubeUrl(window.location.href);
 
-  chrome.storage.local.get([cleanedUrl, "subtitleStyles"], (result) => {
+  chrome.storage.local.get([cleanedUrl, "subtitleStyles", "subtitlesEnabled"], (result) => {
     if (result[cleanedUrl]) {
       console.log("Content Script: Found stored subtitles for this video.");
       currentSubtitles = result[cleanedUrl]; // Load stored subtitles
@@ -30,15 +31,23 @@ function loadStoredSubtitles() {
         applySubtitleStyles();
       }
       
+      // Load subtitle enabled state (default to true)
+      if (result.subtitlesEnabled !== undefined) {
+        subtitlesEnabled = result.subtitlesEnabled;
+      }
+      
       startSubtitleDisplay(); // Start displaying the subtitles
     } else {
       console.log("Content Script: No stored subtitles found for this video.");
     }
     
-    // Still load styles even if no subtitles yet
+    // Still load styles and enabled state even if no subtitles yet
     if (result.subtitleStyles) {
       currentStyles = result.subtitleStyles;
       applySubtitleStyles();
+    }
+    if (result.subtitlesEnabled !== undefined) {
+      subtitlesEnabled = result.subtitlesEnabled;
     }
   });
 }
@@ -166,6 +175,10 @@ function initialize() {
       console.log(`Received ${currentSubtitles.length} subtitle entries.`);
 
       if (currentSubtitles.length > 0) {
+        // Enable subtitles by default when generating
+        subtitlesEnabled = true;
+        chrome.storage.local.set({ subtitlesEnabled: true });
+        
         startSubtitleDisplay(); // Start displaying subtitles
 
         // Store the subtitles locally for future use
@@ -184,7 +197,12 @@ function initialize() {
     } else if (message.action === "updateSubtitleStyles") {
       console.log("Content Script: Received updateSubtitleStyles request");
       currentStyles = message.styles;
+      if (message.enabled !== undefined) {
+        subtitlesEnabled = message.enabled;
+      }
       applySubtitleStyles();
+      // Force update to show/hide subtitles based on enabled state
+      updateSubtitles();
       sendResponse({ status: "success" });
       return true;
     }
@@ -304,6 +322,12 @@ function updateSubtitles() {
   }
 
   if (isNaN(videoPlayer.currentTime)) return;
+
+  // Check if subtitles are enabled
+  if (!subtitlesEnabled) {
+    hideCurrentSubtitle();
+    return;
+  }
 
   const currentTime = videoPlayer.currentTime * 1000; // Convert to ms
   let foundSubtitle = null;

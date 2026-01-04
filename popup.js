@@ -9,16 +9,62 @@ document.addEventListener("DOMContentLoaded", function () {
   const fontColorInput = document.getElementById("fontColor");
   const bgColorInput = document.getElementById("bgColor");
   const bgOpacityInput = document.getElementById("bgOpacity");
+  const subtitlesEnabledToggle = document.getElementById("subtitlesEnabled");
   const applyStyleBtn = document.getElementById("applyStyleBtn");
 
-  // List of Gemini models with video understanding capability
-  const videoModels = [
-    "gemini-2.5-pro-exp-03-25",
+  // List of Gemini models with video understanding capability (fallback)
+  let videoModels = [
     "gemini-2.0-flash-exp",
     "gemini-1.5-pro",
     "gemini-1.5-flash",
     "gemini-1.5-flash-8b"
   ];
+
+  // Function to fetch models from Google Cloud documentation
+  async function fetchModelsFromDocs() {
+    try {
+      statusDiv.textContent = "Fetching latest models...";
+      
+      // Fetch the documentation page
+      const response = await fetch("https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/video-understanding");
+      const html = await response.text();
+      
+      // Parse HTML and extract model names from the table
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      
+      // Find the table with class devsite-table-wrapper
+      const tableWrapper = doc.querySelector(".devsite-table-wrapper");
+      if (tableWrapper) {
+        const models = [];
+        const rows = tableWrapper.querySelectorAll("table tbody tr");
+        
+        rows.forEach(row => {
+          const cells = row.querySelectorAll("td");
+          if (cells.length > 0) {
+            // First column should contain the model name
+            const modelName = cells[0].textContent.trim();
+            if (modelName && modelName.startsWith("gemini")) {
+              models.push(modelName);
+            }
+          }
+        });
+        
+        if (models.length > 0) {
+          videoModels = models;
+          statusDiv.textContent = "";
+          return true;
+        }
+      }
+      
+      statusDiv.textContent = "";
+      return false;
+    } catch (error) {
+      console.error("Error fetching models from docs:", error);
+      statusDiv.textContent = "";
+      return false;
+    }
+  }
 
   // Create a div for displaying existing subtitles message
   const existingSubtitlesDiv = document.createElement("div");
@@ -31,12 +77,15 @@ document.addEventListener("DOMContentLoaded", function () {
   ); // Add it below the button
 
   // Load saved API key and selected model from local storage
-  chrome.storage.local.get(["geminiApiKey", "selectedModel", "subtitleStyles"], function (result) {
+  chrome.storage.local.get(["geminiApiKey", "selectedModel", "subtitleStyles", "subtitlesEnabled"], function (result) {
     if (result.geminiApiKey) {
       apiKeyInput.value = result.geminiApiKey;
     }
-    // Populate models first, then restore selected model
-    populateModelDropdown(result.selectedModel);
+    
+    // Fetch models and populate dropdown
+    fetchModelsFromDocs().then(() => {
+      populateModelDropdown(result.selectedModel);
+    });
     
     if (result.subtitleStyles) {
       const styles = result.subtitleStyles;
@@ -44,6 +93,11 @@ document.addEventListener("DOMContentLoaded", function () {
       if (styles.fontColor) fontColorInput.value = styles.fontColor;
       if (styles.bgColor) bgColorInput.value = styles.bgColor;
       if (styles.bgOpacity !== undefined) bgOpacityInput.value = styles.bgOpacity;
+    }
+    
+    // Load subtitle enabled state (default to true)
+    if (result.subtitlesEnabled !== undefined) {
+      subtitlesEnabledToggle.checked = result.subtitlesEnabled;
     }
   });
 
@@ -66,13 +120,15 @@ document.addEventListener("DOMContentLoaded", function () {
   // Note: populateModelDropdown is called in the storage.local.get callback above
 
   // Handle refresh models button
-  refreshModelsBtn.addEventListener("click", function () {
-    statusDiv.textContent = "Model list refreshed!";
+  refreshModelsBtn.addEventListener("click", async function () {
+    statusDiv.textContent = "Refreshing model list...";
+    const success = await fetchModelsFromDocs();
     chrome.storage.local.get(["selectedModel"], function (result) {
       populateModelDropdown(result.selectedModel);
     });
+    statusDiv.textContent = success ? "Model list refreshed!" : "Using default model list";
     setTimeout(() => {
-      if (statusDiv.textContent === "Model list refreshed!") {
+      if (statusDiv.textContent.includes("refreshed") || statusDiv.textContent.includes("default")) {
         statusDiv.textContent = "";
       }
     }, 2000);
@@ -91,22 +147,28 @@ document.addEventListener("DOMContentLoaded", function () {
       bgColor: bgColorInput.value,
       bgOpacity: parseInt(bgOpacityInput.value)
     };
+    
+    const subtitlesEnabled = subtitlesEnabledToggle.checked;
 
-    // Save styles to storage
-    chrome.storage.local.set({ subtitleStyles: styles }, function () {
-      statusDiv.textContent = "Styles applied!";
+    // Save styles and enabled state to storage
+    chrome.storage.local.set({ 
+      subtitleStyles: styles,
+      subtitlesEnabled: subtitlesEnabled
+    }, function () {
+      statusDiv.textContent = "Settings applied!";
       setTimeout(() => {
-        if (statusDiv.textContent === "Styles applied!") {
+        if (statusDiv.textContent === "Settings applied!") {
           statusDiv.textContent = "";
         }
       }, 2000);
 
-      // Send message to content script to update styles
+      // Send message to content script to update styles and visibility
       chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
         if (tabs[0]) {
           chrome.tabs.sendMessage(tabs[0].id, {
             action: "updateSubtitleStyles",
-            styles: styles
+            styles: styles,
+            enabled: subtitlesEnabled
           });
         }
       });
